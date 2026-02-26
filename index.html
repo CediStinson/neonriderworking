@@ -7,6 +7,7 @@
 
 <style>
 body { margin:0; font-family:Arial; background:#e7e1d6; color:#2c2c2c; }
+
 header { background:#6b5b4d; color:white; padding:1rem; text-align:center; }
 
 #menuBtn { position:fixed; top:10px; right:10px; font-size:24px; cursor:pointer; }
@@ -23,6 +24,24 @@ header { background:#6b5b4d; color:white; padding:1rem; text-align:center; }
   z-index:999;
 }
 
+#menuPanel button { display:block; width:100%; margin:5px 0; }
+
+#confirmModal {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+#confirmBox {
+  background:#f4efe6;
+  padding:20px;
+  border-radius:8px;
+  text-align:center;
+}
+
 #fuelContainer {
   position:fixed;
   bottom:10px;
@@ -30,6 +49,40 @@ header { background:#6b5b4d; color:white; padding:1rem; text-align:center; }
   font-size:22px;
   display:flex;
   gap:5px;
+}
+
+.fuel-loss {
+  position:absolute;
+  color:#a23e2e;
+  font-weight:bold;
+  font-size:28px;
+  animation:floatDown 0.9s ease forwards;
+}
+
+@keyframes floatDown {
+  0% {opacity:1; transform:translateY(-10px);}
+  100% {opacity:0; transform:translateY(25px);}
+}
+
+.fuel-flash { color:#a23e2e; transition:color 0.3s; }
+
+#map { position:relative; width:100%; max-width:600px; margin:auto; }
+
+#mapBackground { width:100%; border-radius:8px; }
+
+.node {
+  position:absolute;
+  width:18px;
+  height:18px;
+  background:#8c7b6a;
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  cursor:pointer;
+}
+
+.node.active {
+  background:#a23e2e;
+  box-shadow:0 0 12px rgba(162,62,46,0.9);
 }
 
 .nodeLabel {
@@ -42,30 +95,6 @@ header { background:#6b5b4d; color:white; padding:1rem; text-align:center; }
   font-size:10px;
   border-radius:4px;
   pointer-events:none;
-}
-
-.node.active {
-  background:#a23e2e;
-  box-shadow:0 0 12px rgba(162,62,46,0.9);
-}
-
-#map {
-  position:relative;
-  width:100%;
-  max-width:600px;
-  margin:auto;
-}
-
-#mapBackground { width:100%; border-radius:8px; }
-
-.node {
-  position:absolute;
-  width:18px;
-  height:18px;
-  background:#8c7b6a;
-  border-radius:50%;
-  cursor:pointer;
-  transform:translate(-50%,-50%);
 }
 
 #playerCar {
@@ -98,7 +127,6 @@ header { background:#6b5b4d; color:white; padding:1rem; text-align:center; }
   100% { transform:translate(-50%,-50%) scale(0.6); opacity:0.7; }
 }
 
-/* Popup */
 #nodePopup {
   position:absolute;
   background:white;
@@ -128,31 +156,34 @@ header { background:#6b5b4d; color:white; padding:1rem; text-align:center; }
 
 <header>NEW RUSTVILLE – CAMPAIGN MAP</header>
 
+<div id="menuBtn" onclick="toggleMenu()">☰</div>
+
+<div id="menuPanel">
+<button onclick="showConfirm()">New Game</button>
+<button onclick="downloadSave()">Download Save</button>
+<input type="file" id="uploadSave" style="display:none" onchange="loadSave(event)">
+<button onclick="document.getElementById('uploadSave').click()">Upload Save</button>
+</div>
+
+<div id="confirmModal">
+<div id="confirmBox">
+<p>All unsaved progress will be lost.</p>
+<button onclick="newGame()">OK</button>
+<button onclick="hideConfirm()">Cancel</button>
+</div>
+</div>
+
 <div id="fuelContainer">🛢 <span id="fuel">11</span></div>
 
 <div id="map">
 
 <img src="map.png" id="mapBackground">
 
-<div class="node" style="left:44%;top:60%">
-<div class="nodeLabel">Garage Ruins</div>
-</div>
-
-<div class="node" style="left:25%;top:35%">
-<div class="nodeLabel">Industrial Strip</div>
-</div>
-
-<div class="node" style="left:70%;top:35%">
-<div class="nodeLabel">Spiral Parking Deck</div>
-</div>
-
-<div class="node" style="left:50%;top:45%">
-<div class="nodeLabel">Downtown Skeleton</div>
-</div>
-
-<div class="node" style="left:50%;top:80%">
-<div class="nodeLabel">Fuel Yard</div>
-</div>
+<div class="node" style="left:44%;top:60%"><div class="nodeLabel">Garage Ruins</div></div>
+<div class="node" style="left:25%;top:35%"><div class="nodeLabel">Industrial Strip</div></div>
+<div class="node" style="left:70%;top:35%"><div class="nodeLabel">Spiral Parking Deck</div></div>
+<div class="node" style="left:50%;top:45%"><div class="nodeLabel">Downtown Skeleton</div></div>
+<div class="node" style="left:50%;top:80%"><div class="nodeLabel">Fuel Yard</div></div>
 
 <div id="playerCar"></div>
 
@@ -189,41 +220,37 @@ const locationData = [
 
 loadLocal();
 moveCar(nodes[saveData.locationIndex]);
-nodes.forEach(n=>n.classList.remove("active"));
-nodes[saveData.locationIndex].classList.add("active");
+setActiveNode(saveData.locationIndex);
 
 nodes.forEach((n,i)=> n.onclick=(e)=>showPopup(i,n));
 
 function showPopup(index,node){
-
 const data = locationData[index];
-
-popupTitle.textContent = data.name;
-popupDesc.textContent = data.desc;
-popupRaces.textContent = "Race: "+data.races.join(", ");
-
-travelBtn.innerHTML = "Travel (-1 🛢)";
-travelBtn.onclick = ()=>travelTo(index);
-
+popupTitle.textContent=data.name;
+popupDesc.textContent=data.desc;
+popupRaces.textContent="Race: "+data.races.join(", ");
+travelBtn.innerHTML="Travel (-1 🛢)";
+travelBtn.onclick=()=>travelTo(index);
 popup.style.display="block";
 popup.style.left=node.style.left;
 popup.style.top=node.style.top;
 }
 
 function travelTo(index){
-
 if(saveData.fuel<=0) return alert("Out of fuel!");
-
 popup.style.display="none";
-nodes.forEach(n=>n.classList.remove("active"));
-
 saveData.fuel--;
+animateFuelLoss(1);
 saveData.locationIndex=index;
-
-nodes[index].classList.add("active");
+setActiveNode(index);
 updateUI();
 moveCar(nodes[index]);
 saveLocal();
+}
+
+function setActiveNode(index){
+nodes.forEach(n=>n.classList.remove("active"));
+nodes[index].classList.add("active");
 }
 
 function moveCar(node){
@@ -233,15 +260,54 @@ car.style.top=node.style.top;
 
 function updateUI(){ fuelText.textContent=saveData.fuel; }
 
-function saveLocal(){
-localStorage.setItem("neonAshesSave",JSON.stringify(saveData));
+function animateFuelLoss(amount){
+const container=document.getElementById("fuelContainer");
+const loss=document.createElement("div");
+loss.textContent="-"+amount;
+loss.className="fuel-loss";
+container.appendChild(loss);
+setTimeout(()=>loss.remove(),900);
+fuelText.classList.add("fuel-flash");
+setTimeout(()=>fuelText.classList.remove("fuel-flash"),300);
 }
+
+function saveLocal(){ localStorage.setItem("neonAshesSave",JSON.stringify(saveData)); }
 
 function loadLocal(){
 const data=localStorage.getItem("neonAshesSave");
 if(data) saveData=JSON.parse(data);
 updateUI();
 }
+
+function downloadSave(){
+const blob=new Blob([JSON.stringify(saveData)],{type:"application/json"});
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="neon_ashes_save.json";
+a.click();
+}
+
+function loadSave(event){
+const file=event.target.files[0];
+const reader=new FileReader();
+reader.onload=function(e){
+saveData=JSON.parse(e.target.result);
+updateUI();
+moveCar(nodes[saveData.locationIndex]);
+setActiveNode(saveData.locationIndex);
+saveLocal();
+};
+reader.readAsText(file);
+}
+
+function toggleMenu(){
+const panel=document.getElementById("menuPanel");
+panel.style.display=panel.style.display==="block"?"none":"block";
+}
+
+function showConfirm(){ document.getElementById("confirmModal").style.display="flex"; }
+function hideConfirm(){ document.getElementById("confirmModal").style.display="none"; }
+function newGame(){ localStorage.removeItem("neonAshesSave"); location.reload(); }
 
 </script>
 </body>
