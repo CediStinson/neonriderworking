@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Ashes Companion</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #e7e1d6;
+  color: #2c2c2c;
+}
+
+/* HEADER */
+header {
+  background: #6b5b4d;
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+/* FUEL DISPLAY */
+#fuelContainer {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* FLOATING LOSS */
+.fuel-loss {
+  position: absolute;
+  color: #a23e2e;
+  font-weight: bold;
+  animation: floatUp 0.8s ease forwards;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+.fuel-flash {
+  color: #a23e2e;
+  transition: color 0.3s;
+}
+
+.container {
+  padding: 1rem;
+  max-width: 900px;
+  margin: auto;
+}
+
+.card {
+  background: #f4efe6;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* MAP */
+#map {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  margin: auto;
+}
+
+.node {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #8c7b6a;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+#playerCar {
+  position: absolute;
+  width: 24px;
+  transition: transform 0.8s ease-in-out;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+NEW RUSTVILLE – CAMPAIGN MAP
+</header>
+
+<div id="fuelContainer">
+  🛢 <span id="fuel">11</span>
+</div>
+
+<div class="container">
+
+<div class="card">
+<h3>City Map</h3>
+
+<div id="map">
+
+<svg width="300" height="300">
+<line x1="150" y1="200" x2="150" y2="120" stroke="#6b5b4d"/>
+<line x1="150" y1="120" x2="80" y2="80" stroke="#6b5b4d"/>
+<line x1="150" y1="120" x2="220" y2="80" stroke="#6b5b4d"/>
+<line x1="150" y1="200" x2="150" y2="260" stroke="#6b5b4d"/>
+</svg>
+
+<div class="node" style="left:140px;top:200px" data-name="Garage Ruins"></div>
+<div class="node" style="left:70px;top:70px" data-name="Industrial Strip"></div>
+<div class="node" style="left:210px;top:70px" data-name="Spiral Parking Deck"></div>
+<div class="node" style="left:140px;top:110px" data-name="Downtown Skeleton"></div>
+<div class="node" style="left:140px;top:260px" data-name="Fuel Yard"></div>
+
+<img id="playerCar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Car_icon.svg/64px-Car_icon.svg.png">
+
+</div>
+
+<div id="locationLabel"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let fuel = 11;
+const nodes = document.querySelectorAll(".node");
+const car = document.getElementById("playerCar");
+const label = document.getElementById("locationLabel");
+const fuelText = document.getElementById("fuel");
+
+let currentNode = nodes[0];
+
+moveCar(currentNode);
+
+nodes.forEach(n=>{
+  n.onclick = ()=>travelTo(n);
+});
+
+function travelTo(node){
+  if(fuel<=0) return alert("Out of fuel!");
+
+  fuel--;
+  animateFuelLoss(1);
+
+  fuelText.textContent = fuel;
+  currentNode = node;
+  moveCar(node);
+}
+
+function moveCar(node){
+  const x = node.offsetLeft;
+  const y = node.offsetTop;
+  car.style.transform = `translate(${x}px, ${y}px)`;
+  label.textContent = "Location: " + node.dataset.name;
+}
+
+function animateFuelLoss(amount) {
+  const container = document.getElementById("fuelContainer");
+  const loss = document.createElement("div");
+
+  loss.textContent = "-" + amount;
+  loss.className = "fuel-loss";
+
+  container.appendChild(loss);
+
+  setTimeout(()=> loss.remove(), 800);
+
+  fuelText.classList.add("fuel-flash");
+
+  setTimeout(()=> {
+    fuelText.classList.remove("fuel-flash");
+  }, 300);
+}
+
+</script>
+
+</body>
+</html>
