@@ -86,6 +86,25 @@ header {
   transition: color 0.3s;
 }
 
+.nodeLabel {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 2px 6px;
+  font-size: 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+
+.node.active {
+  background: #a23e2e;
+  box-shadow: 0 0 12px rgba(162, 62, 46, 0.9);
+}
+
 .container {
   padding: 1rem;
   max-width: 900px;
@@ -124,6 +143,10 @@ header {
   box-shadow: 0 0 8px rgba(0,0,0,0.4);
 }
 
+.node:hover {
+  box-shadow: 0 0 12px rgba(162, 62, 46, 0.6);
+}
+
 #playerCar {
   position: absolute;
   width: 14px;
@@ -133,7 +156,26 @@ header {
   transform: translate(-50%, -50%);
   transition: all 0.8s ease-in-out;
   pointer-events: none;
-  box-shadow: 0 0 8px rgba(162, 62, 46, 0.8);
+}
+
+#playerCar::after {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: rgba(162,62,46,0.25);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.7; }
+  50% { transform: translate(-50%, -50%) scale(1); opacity: 0.2; }
+  100% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.7; }
 }
 
 /* CONFIRM MODAL */
@@ -201,18 +243,26 @@ header {
 
   <img src="map.png" id="mapBackground">
 
-  <div class="node" style="left:44%;top:60%" data-name="Garage Ruins"></div>
-  <div class="node" style="left:25%;top:35%" data-name="Industrial Strip"></div>
-  <div class="node" style="left:70%;top:35%" data-name="Spiral Parking Deck"></div>
-  <div class="node" style="left:50%;top:45%" data-name="Downtown Skeleton"></div>
-  <div class="node" style="left:50%;top:80%" data-name="Fuel Yard"></div>
+  <div class="node" style="left:44%;top:60%" data-name="Garage Ruins">
+  <div class="nodeLabel">Garage Ruins</div>
+</div>
+  <div class="node" style="left:25%;top:35%" data-name="Industrial Strip">
+  <div class="nodeLabel">Industrial Strip</div>
+</div>
+  <div class="node" style="left:70%;top:35%" data-name="Spiral Parking Deck">
+  <div class="nodeLabel">Spiral Parking Deck</div>
+</div>
+  <div class="node" style="left:50%;top:45%" data-name="Downtown Skeleton">
+  <div class="nodeLabel">Downtown Skeleton</div>
+</div>
+  <div class="node" style="left:50%;top:80%" data-name="Fuel Yard">
+  <div class="nodeLabel">Fuel Yard</div>
+</div>
 
   <!-- 🔴 PLAYER DOT -->
   <div id="playerCar"></div>
 
 </div>
-
-<div id="locationLabel"></div>
 
 </div>
 
@@ -223,19 +273,25 @@ let saveData = { fuel:11, locationIndex:0 };
 
 const nodes = document.querySelectorAll(".node");
 const car = document.getElementById("playerCar");
-const label = document.getElementById("locationLabel");
 const fuelText = document.getElementById("fuel");
 
 loadLocal();
 moveCar(nodes[saveData.locationIndex]);
+nodes.forEach(n => n.classList.remove("active"));
+nodes[saveData.locationIndex].classList.add("active");
 
 nodes.forEach((n,i)=> n.onclick=()=>travelTo(i));
 
 function travelTo(index){
   if(saveData.fuel<=0) return alert("Out of fuel!");
+
+  nodes.forEach(n => n.classList.remove("active"));
+
   saveData.fuel--;
   animateFuelLoss(1);
   saveData.locationIndex=index;
+  nodes[index].classList.add("active");
+
   updateUI();
   moveCar(nodes[index]);
   saveLocal();
@@ -246,7 +302,6 @@ function moveCar(node){
   const y = node.style.top;
   car.style.left = x;
   car.style.top = y;
-  label.textContent = "Location: " + node.dataset.name;
 }
 
 function updateUI(){ fuelText.textContent=saveData.fuel; }
@@ -285,8 +340,13 @@ function loadSave(event){
   const reader=new FileReader();
   reader.onload=function(e){
     saveData=JSON.parse(e.target.result);
+
+    nodes.forEach(n => n.classList.remove("active")); // ← add this
+
     updateUI();
     moveCar(nodes[saveData.locationIndex]);
+    nodes[saveData.locationIndex].classList.add("active");
+
     saveLocal();
   };
   reader.readAsText(file);
