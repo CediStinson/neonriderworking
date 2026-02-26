@@ -13,7 +13,6 @@ body {
   color: #2c2c2c;
 }
 
-/* HEADER */
 header {
   background: #6b5b4d;
   color: white;
@@ -28,8 +27,18 @@ header {
   position: fixed;
   top: 10px;
   right: 10px;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Jerrycan SVG */
+#fuelIcon {
+  width: 24px;
+  height: 24px;
+  fill: #6b5b4d;
 }
 
 /* FLOATING LOSS */
@@ -37,17 +46,18 @@ header {
   position: absolute;
   color: #a23e2e;
   font-weight: bold;
-  animation: floatUp 0.8s ease forwards;
+  font-size: 28px;
+  animation: floatDown 0.9s ease forwards;
 }
 
-@keyframes floatUp {
+@keyframes floatDown {
   0% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(-10px);
   }
   100% {
     opacity: 0;
-    transform: translateY(-30px);
+    transform: translateY(25px);
   }
 }
 
@@ -67,7 +77,6 @@ header {
   padding: 1rem;
   margin-bottom: 1rem;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 /* MAP */
@@ -92,6 +101,13 @@ header {
   width: 24px;
   transition: transform 0.8s ease-in-out;
 }
+
+.save-buttons {
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  margin-top:10px;
+}
 </style>
 </head>
 
@@ -102,7 +118,11 @@ NEW RUSTVILLE – CAMPAIGN MAP
 </header>
 
 <div id="fuelContainer">
-  🛢 <span id="fuel">11</span>
+  <!-- Jerrycan -->
+  <svg id="fuelIcon" viewBox="0 0 24 24">
+    <path d="M6 2h8l2 2v3h2v2h-2v11H4V4h2V2zm2 4v2h4V6H8zm-2 4v8h8v-8H6z"/>
+  </svg>
+  <span id="fuel">11</span>
 </div>
 
 <div class="container">
@@ -131,35 +151,46 @@ NEW RUSTVILLE – CAMPAIGN MAP
 
 <div id="locationLabel"></div>
 
+<div class="save-buttons">
+<button onclick="downloadSave()">Download Save</button>
+<input type="file" id="uploadSave" style="display:none" onchange="loadSave(event)">
+<button onclick="document.getElementById('uploadSave').click()">Upload Save</button>
+</div>
+
 </div>
 
 </div>
 
 <script>
 
-let fuel = 11;
+let saveData = {
+  fuel: 11,
+  locationIndex: 0
+};
+
 const nodes = document.querySelectorAll(".node");
 const car = document.getElementById("playerCar");
 const label = document.getElementById("locationLabel");
 const fuelText = document.getElementById("fuel");
 
-let currentNode = nodes[0];
+loadLocal();
 
-moveCar(currentNode);
+moveCar(nodes[saveData.locationIndex]);
 
-nodes.forEach(n=>{
-  n.onclick = ()=>travelTo(n);
+nodes.forEach((n,i)=>{
+  n.onclick = ()=>travelTo(i);
 });
 
-function travelTo(node){
-  if(fuel<=0) return alert("Out of fuel!");
+function travelTo(index){
+  if(saveData.fuel<=0) return alert("Out of fuel!");
 
-  fuel--;
+  saveData.fuel--;
   animateFuelLoss(1);
 
-  fuelText.textContent = fuel;
-  currentNode = node;
-  moveCar(node);
+  saveData.locationIndex = index;
+  updateUI();
+  moveCar(nodes[index]);
+  saveLocal();
 }
 
 function moveCar(node){
@@ -167,6 +198,10 @@ function moveCar(node){
   const y = node.offsetTop;
   car.style.transform = `translate(${x}px, ${y}px)`;
   label.textContent = "Location: " + node.dataset.name;
+}
+
+function updateUI(){
+  fuelText.textContent = saveData.fuel;
 }
 
 function animateFuelLoss(amount) {
@@ -178,13 +213,43 @@ function animateFuelLoss(amount) {
 
   container.appendChild(loss);
 
-  setTimeout(()=> loss.remove(), 800);
+  setTimeout(()=> loss.remove(), 900);
 
   fuelText.classList.add("fuel-flash");
 
   setTimeout(()=> {
     fuelText.classList.remove("fuel-flash");
   }, 300);
+}
+
+function saveLocal(){
+  localStorage.setItem("neonAshesSave", JSON.stringify(saveData));
+}
+
+function loadLocal(){
+  const data = localStorage.getItem("neonAshesSave");
+  if(data) saveData = JSON.parse(data);
+  updateUI();
+}
+
+function downloadSave(){
+  const blob = new Blob([JSON.stringify(saveData)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "neon_ashes_save.json";
+  a.click();
+}
+
+function loadSave(event){
+  const file = event.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e){
+    saveData = JSON.parse(e.target.result);
+    updateUI();
+    moveCar(nodes[saveData.locationIndex]);
+    saveLocal();
+  };
+  reader.readAsText(file);
 }
 
 </script>
